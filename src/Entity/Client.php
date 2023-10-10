@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\ClientRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use League\Bundle\OAuth2ServerBundle\Entity\Client as ClientOAuth;
 
@@ -20,8 +22,16 @@ class Client
     #[ORM\Column(length: 255)]
     private ?string $email = null;
 
-    #[ORM\OneToOne(targetEntity: "ClientOAuth", mappedBy: "client", cascade: ["persist", "remove"])]
+    #[ORM\OneToOne(targetEntity: "League\Bundle\OAuth2ServerBundle\Entity\Client", mappedBy: "client", cascade: ["persist", "remove"])]
     private $clientOAuth;
+
+    #[ORM\OneToMany(mappedBy: 'client', targetEntity: User::class, orphanRemoval: true)]
+    private Collection $users;
+
+    public function __construct()
+    {
+        $this->users = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -60,6 +70,36 @@ class Client
     public function setClientOAuth($clientOAuth): static
     {
         $this->clientOAuth = $clientOAuth;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    public function getUsers(): Collection
+    {
+        return $this->users;
+    }
+
+    public function addUser(User $user): static
+    {
+        if (!$this->users->contains($user)) {
+            $this->users->add($user);
+            $user->setClient($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUser(User $user): static
+    {
+        if ($this->users->removeElement($user)) {
+            // set the owning side to null (unless already changed)
+            if ($user->getClient() === $this) {
+                $user->setClient(null);
+            }
+        }
 
         return $this;
     }

@@ -9,10 +9,15 @@ use Symfony\Component\Routing\Annotation\Route;
 class DefaultController extends AbstractController
 {
     /**
-     * @Route("/", name="home")
+     * @Route("/api", name="home")
      */
     public function index(): Response
     {
-        return new Response('Hello, this is a Symfony app!');
+        $user = $this->getUser();
+        return $this->json([
+            'message' => 'You successfully authenticated!',
+            'email' => $user->getEmail(),
+        ]);
+        // return new Response('Hello, this is a Symfony app!');
     }
 }

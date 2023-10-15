@@ -12,16 +12,24 @@ class Client
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['getClients'])]
+    #[Groups(['getClients', 'getClientDetails'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['getClients'])]
-    private ?string $name = null;
+    #[Groups(['getClients', 'getClientDetails'])]
+    private ?string $firstname = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['getClients'])]
+    #[Groups(['getClients', 'getClientDetails'])]
+    private ?string $lastname = null;
+
+    #[ORM\Column(length: 255)]
+    #[Groups(['getClientDetails'])]
     private ?string $email = null;
+
+    #[ORM\Column(length: 12)]
+    #[Groups(['getClientDetails'])]
+    private ?string $phone = null;
 
     #[ORM\ManyToOne(inversedBy: 'clients')]
     #[ORM\JoinColumn(nullable: false)]
@@ -32,14 +40,26 @@ class Client
         return $this->id;
     }
 
-    public function getName(): ?string
+    public function getFirstname(): ?string
     {
-        return $this->name;
+        return $this->firstname;
     }
 
-    public function setName(string $name): static
+    public function setFirstname(string $firstname): static
     {
-        $this->name = $name;
+        $this->firstname = $firstname;
+
+        return $this;
+    }
+
+    public function getLastname(): ?string
+    {
+        return $this->lastname;
+    }
+
+    public function setLastname(string $lastname): static
+    {
+        $this->lastname = $lastname;
 
         return $this;
     }
@@ -52,6 +72,18 @@ class Client
     public function setEmail(string $email): static
     {
         $this->email = $email;
+
+        return $this;
+    }
+
+    public function getPhone(): ?string
+    {
+        return $this->phone;
+    }
+
+    public function setPhone(string $phone): static
+    {
+        $this->phone = $phone;
 
         return $this;
     }

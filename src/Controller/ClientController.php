@@ -128,7 +128,7 @@ class ClientController extends AbstractController
      *     description="Supprime les données d'un client",
      *     @OA\JsonContent(
      *        type="array",
-     *        @OA\Items(ref=@Model(type=Client::class))
+     *        @OA\Items(ref=@Model(type=Client::class, groups={"getClientDetails"}))
      *     )
      * )
      * 
@@ -164,7 +164,7 @@ class ClientController extends AbstractController
      *     description="Ajouter les données d'un client",
      *     @OA\JsonContent(
      *        type="array",
-     *        @OA\Items(ref=@Model(type=Client::class))
+     *        @OA\Items(ref=@Model(type=Client::class, groups={"getClientDetails"}))
      *     )
      * )
      * 

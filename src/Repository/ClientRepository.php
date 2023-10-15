@@ -23,7 +23,7 @@ class ClientRepository extends ServiceEntityRepository
     }
 
     /**
-     * Cette méthode retourne $limit livres à partir de la page $page.
+     * Cette méthode retourne $limit à partir de la page $page.
      * On récupère via l'ID d'un User
      *
      * @param integer $page

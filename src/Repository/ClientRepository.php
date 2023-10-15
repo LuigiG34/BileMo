@@ -31,7 +31,8 @@ class ClientRepository extends ServiceEntityRepository
      * @param User $user
      * @return mixed
      */
-    public function findAllWithPagination(int $page, int $limit, User $user) {
+    public function findAllWithPagination(int $page, int $limit, User $user): mixed
+    {
         $qb = $this->createQueryBuilder('c')
             ->andWhere('c.user = :user')
             ->setParameter('user', $user)
@@ -44,6 +45,15 @@ class ClientRepository extends ServiceEntityRepository
     public function remove(Client $entity, bool $flush = false): void
     {
         $this->getEntityManager()->remove($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    public function save(Client $entity, bool $flush = false): void
+    {
+        $this->getEntityManager()->persist($entity);
 
         if ($flush) {
             $this->getEntityManager()->flush();

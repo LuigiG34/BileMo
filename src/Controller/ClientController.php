@@ -32,6 +32,28 @@ class ClientController extends AbstractController
      *          @OA\Items(ref=@Model(type=Client::class, groups={"getClients"}))
      *      )
      * )
+     * 
+     * @OA\Parameter(
+     *     name="page",
+     *     in="query",
+     *     description="La page que l'on veut récupérer",
+     *     @OA\Schema(type="int")
+     * )
+     *
+     * @OA\Parameter(
+     *     name="limit",
+     *     in="query",
+     *     description="Le nombre d'éléments que l'on veut récupérer",
+     *     @OA\Schema(type="int")
+     * )
+     * 
+     * @OA\Parameter(
+     *     name="id",
+     *     in="query",
+     *     description="L'id de l'utilisateur associés aux clients",
+     *     @OA\Schema(type="int")
+     * )
+     * 
      * @OA\Tag(name="Clients")
      *
      * @param User $user
@@ -41,7 +63,7 @@ class ClientController extends AbstractController
      * @param TagAwareCacheInterface $cache
      * @return JsonResponse
      */
-    #[Route('/api/users/{id}/clients', name: 'getCustomers', methods: ['GET'])]
+    #[Route('/api/users/{id}/clients', name: 'getClients', methods: ['GET'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour voir les clients !")]
     public function getClients(User $user, Request $request, ClientRepository $clientRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
@@ -58,5 +80,39 @@ class ClientController extends AbstractController
         });
 
         return new JsonResponse($jsonClients, Response::HTTP_OK, [], true);
+    }
+
+    
+    /**
+     * Récupérer les détails d'un client
+     *
+     * @OA\Response(
+     *      response=200,
+     *      description="Retourne les données d'un client",
+     *      @OA\JsonContent(
+     *          type="array",
+     *          @OA\Items(ref=@Model(type=Client::class, groups={"getClients"}))
+     *      )
+     * )
+     * 
+     * @OA\Parameter(
+     *     name="id",
+     *     in="query",
+     *     description="L'id du client qu'on souhaite récupérer",
+     *     @OA\Schema(type="int")
+     * )
+     * 
+     * @OA\Tag(name="Clients")
+     * 
+     * @param Client $client
+     * @param SerializerInterface $serializer
+     * @return JsonResponse
+     */
+    #[Route('/api/clients/{id}', name: 'getClient', methods: ['GET'])]
+    #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour voir le client !")]
+    public function getClientDetails(Client $client ,SerializerInterface $serializer): JsonResponse
+    {
+        $jsonClient = $serializer->serialize($client, 'json', ['groups' => 'getClients']);
+        return new JsonResponse($jsonClient, Response::HTTP_OK, [], true);
     }
 }

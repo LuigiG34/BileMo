@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Client;
+use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -19,6 +20,25 @@ class ClientRepository extends ServiceEntityRepository
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Client::class);
+    }
+
+    /**
+     * Cette méthode retourne $limit livres à partir de la page $page.
+     * On récupère via l'ID d'un User
+     *
+     * @param integer $page
+     * @param integer $limit
+     * @param User $user
+     * @return mixed
+     */
+    public function findAllWithPagination(int $page, int $limit, User $user) {
+        $qb = $this->createQueryBuilder('c')
+            ->andWhere('c.user = :user')
+            ->setParameter('user', $user)
+            ->setFirstResult(($page -1) * $limit)
+            ->setMaxResults($limit);
+
+        return $qb->getQuery()->getResult();
     }
 
 //    /**

@@ -5,12 +5,15 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Entity\Client;
 use App\Repository\ClientRepository;
+use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -125,7 +128,7 @@ class ClientController extends AbstractController
      *     description="Supprime les données d'un client",
      *     @OA\JsonContent(
      *        type="array",
-     *        @OA\Items(ref=@Model(type=Client::class, groups={"getClients"}))
+     *        @OA\Items(ref=@Model(type=Client::class))
      *     )
      * )
      * 
@@ -150,5 +153,51 @@ class ClientController extends AbstractController
         $clientRepository->remove($client, true);
         $cache->invalidateTags(["clientsCache"]);
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+    }
+
+
+    /**
+     * Ajouter un nouveau client lié à un utilisateur
+     *
+     * @OA\Response(
+     *     response=201,
+     *     description="Ajouter les données d'un client",
+     *     @OA\JsonContent(
+     *        type="array",
+     *        @OA\Items(ref=@Model(type=Client::class))
+     *     )
+     * )
+     * 
+     * @OA\Tag(name="Clients")
+     * 
+     * @param Request $request
+     * @param SerializerInterface $serializer
+     * @param ClientRepository $clientRepository
+     * @param UserRepository $userRepository
+     * @param UrlGeneratorInterface $urlGenerator
+     * @param ValidatorInterface $validator
+     * @param TagAwareCacheInterface $cache
+     * @return JsonResponse
+     */
+    #[Route('/api/clients', name: 'addClient', methods: ['POST'])]
+    #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour ajouter le client !")]
+    public function addClient(Request $request, SerializerInterface $serializer, ClientRepository $clientRepository, UserRepository $userRepository, UrlGeneratorInterface $urlGenerator, ValidatorInterface $validator, TagAwareCacheInterface $cache): JsonResponse
+    {
+        $client = $serializer->deserialize($request->getContent(), Client::class, 'json');
+
+        $errors = $validator->validate($client);
+        if($errors->count() > 0) {
+            return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
+        }
+        
+        $content = $request->toArray();
+        $client->setUser($userRepository->find($content['idUser']));
+        $clientRepository->save($client, true);
+
+        $jsonClient = $serializer->serialize($client, "json", ['groups' => 'getClientDetails']);
+
+        $location = $urlGenerator->generate('getClientDetails', ['id' => $client->getId(), UrlGeneratorInterface::ABSOLUTE_URL]);
+        $cache->invalidateTags(["clientsCache"]);
+        return new JsonResponse($jsonClient, Response::HTTP_CREATED, ["Location" => $location], true);
     }
 }

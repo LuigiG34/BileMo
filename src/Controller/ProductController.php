@@ -73,4 +73,37 @@ class ProductController extends AbstractController
         return new JsonResponse($jsonProducts, Response::HTTP_OK, [], true);
     }
 
+
+    /**
+     * Récupérer les détails d'un produit
+     *
+     * @OA\Response(
+     *      response=200,
+     *      description="Retourne les données d'un produit",
+     *      @OA\JsonContent(
+     *          type="array",
+     *          @OA\Items(ref=@Model(type=Product::class, groups={"getProductDetails"}))
+     *      )
+     * )
+     * 
+     * @OA\Parameter(
+     *     name="id",
+     *     in="query",
+     *     description="L'id du produit qu'on souhaite récupérer",
+     *     @OA\Schema(type="int")
+     * )
+     * 
+     * @OA\Tag(name="Products")
+     * 
+     * @param Product $product
+     * @param SerializerInterface $serializer
+     * @return JsonResponse
+     */
+    #[Route('/api/products/{id}', name: 'getProduct', methods: ['GET'])]
+    #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour voir le produit !")]
+    public function getProductDetails(Product $product ,SerializerInterface $serializer): JsonResponse
+    {
+        $jsonProduct = $serializer->serialize($product, 'json', ['groups' => 'getProductDetails']);
+        return new JsonResponse($jsonProduct, Response::HTTP_OK, [], true);
+    }
 }

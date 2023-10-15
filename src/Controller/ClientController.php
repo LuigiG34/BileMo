@@ -91,7 +91,7 @@ class ClientController extends AbstractController
      *      description="Retourne les données d'un client",
      *      @OA\JsonContent(
      *          type="array",
-     *          @OA\Items(ref=@Model(type=Client::class, groups={"getClients"}))
+     *          @OA\Items(ref=@Model(type=Client::class, groups={"getClientDetails"}))
      *      )
      * )
      * 
@@ -108,11 +108,47 @@ class ClientController extends AbstractController
      * @param SerializerInterface $serializer
      * @return JsonResponse
      */
-    #[Route('/api/clients/{id}', name: 'getClient', methods: ['GET'])]
+    #[Route('/api/clients/{id}', name: 'getClientDetails', methods: ['GET'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour voir le client !")]
     public function getClientDetails(Client $client ,SerializerInterface $serializer): JsonResponse
     {
-        $jsonClient = $serializer->serialize($client, 'json', ['groups' => 'getClients']);
+        $jsonClient = $serializer->serialize($client, 'json', ['groups' => 'getClientDetails']);
         return new JsonResponse($jsonClient, Response::HTTP_OK, [], true);
+    }
+
+
+    /**
+     * Supprimer un client
+     *
+     * @OA\Response(
+     *     response=204,
+     *     description="Supprime les données d'un client",
+     *     @OA\JsonContent(
+     *        type="array",
+     *        @OA\Items(ref=@Model(type=Client::class, groups={"getClients"}))
+     *     )
+     * )
+     * 
+     * @OA\Parameter(
+     *     name="id",
+     *     in="query",
+     *     description="L'id du client que l'on veut supprimer",
+     *     @OA\Schema(type="int")
+     * )
+     *
+     * @OA\Tag(name="Clients")
+     * 
+     * @param Client $client
+     * @param ClientRepository $clientRepository
+     * @param TagAwareCacheInterface $cache
+     * @return JsonResponse
+     */
+    #[Route('/api/clients/{id}', name: 'deleteClient', methods: ['DELETE'])]
+    #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour supprimer le client !")]
+    public function deleteClient(Client $client, ClientRepository $clientRepository, TagAwareCacheInterface $cache): JsonResponse
+    {
+        $clientRepository->remove($client, true);
+        $cache->invalidateTags(["clientsCache"]);
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 }

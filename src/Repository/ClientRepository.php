@@ -41,6 +41,15 @@ class ClientRepository extends ServiceEntityRepository
         return $qb->getQuery()->getResult();
     }
 
+    public function remove(Client $entity, bool $flush = false): void
+    {
+        $this->getEntityManager()->remove($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
 //    /**
 //     * @return Client[] Returns an array of Client objects
 //     */

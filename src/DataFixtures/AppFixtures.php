@@ -28,7 +28,7 @@ class AppFixtures extends Fixture
 
         // Data Fixtures for User 
         $orange = new User();
-        $orange->setEmail('user@orange.fr');
+        $orange->setEmail('orange@telecom.fr');
         $orange->setName('Orange Telecom');
         $orange->setRoles(["ROLE_USER"]);
         $orange->setPassword($this->userPasswordHasher->hashPassword($orange, "passwordOrange"));
@@ -36,11 +36,19 @@ class AppFixtures extends Fixture
 
         // Data Fixtures for User 
         $sfr = new User();
-        $sfr->setEmail('user@sfr.fr');
+        $sfr->setEmail('sfr@telecom.fr');
         $sfr->setName('SFR Telecom');
         $sfr->setRoles(["ROLE_USER"]);
         $sfr->setPassword($this->userPasswordHasher->hashPassword($sfr, "passwordSFR"));
         $manager->persist($sfr);
+
+        // Data Fixtures for User 
+        $bouygues = new User();
+        $bouygues->setEmail('bouygues@telecom.fr');
+        $bouygues->setName('Bouygues Telecom');
+        $bouygues->setRoles(["ROLE_USER"]);
+        $bouygues->setPassword($this->userPasswordHasher->hashPassword($bouygues, "passwordBouygues"));
+        $manager->persist($bouygues);
 
         // Data Fixtures for Products, here iPhones
         for($i = 1; $i < 16; $i++) {
@@ -63,18 +71,33 @@ class AppFixtures extends Fixture
         // Data Fixtures for Clients
         for($i = 0; $i < 50; $i++) {
             $client = new Client();
-            $client->setName($faker->firstName ." ". $faker->lastName);
+            $client->setFirstname($faker->firstName);
+            $client->setLastname($faker->lastName);
             $client->setEmail($faker->email);
-            $client->setUser($sfr);
+            $client->setPhone($faker->e164PhoneNumber);
+            $client->setUser($orange);
             $manager->persist($client);
         }
 
         // Data Fixtures for Clients
         for($i = 0; $i < 50; $i++) {
             $client = new Client();
-            $client->setName($faker->firstName ." ". $faker->lastName);
+            $client->setFirstname($faker->firstName);
+            $client->setLastname($faker->lastName);
             $client->setEmail($faker->email);
+            $client->setPhone($faker->e164PhoneNumber);
             $client->setUser($orange);
+            $manager->persist($client);
+        }
+
+        // Data Fixtures for Clients
+        for($i = 0; $i < 50; $i++) {
+            $client = new Client();
+            $client->setFirstname($faker->firstName);
+            $client->setLastname($faker->lastName);
+            $client->setEmail($faker->email);
+            $client->setPhone($faker->e164PhoneNumber);
+            $client->setUser($bouygues);
             $manager->persist($client);
         }
 

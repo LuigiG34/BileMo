@@ -12,6 +12,7 @@ class Client
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['getClients'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]

@@ -106,4 +106,22 @@ class ProductController extends AbstractController
         $jsonProduct = $serializer->serialize($product, 'json', ['groups' => 'getProductDetails']);
         return new JsonResponse($jsonProduct, Response::HTTP_OK, [], true);
     }
+
+    // #[Cache(lastModified: 'product.getUpdatedAt()', etag: "'Product' ~ product.getId() ~ product.getUpdatedAt().getTimestamp()")]
+    // public function showAcion(Product $product)
+    // {
+    //     $response = $this->json(
+    //         $product,
+    //         200,
+    //         ['Content-Type' => 'application/json'],
+    //         ['groups' => 'show_product']
+    //     );
+
+    //     $response->setEtag(md5($response->getContent()));
+    //     $response->setPublic(); // make sure the response is public/cacheable
+    //     $response->setLastModified($product->getUpdatedAt());
+
+    //     return $response;
+
+    // }
 }

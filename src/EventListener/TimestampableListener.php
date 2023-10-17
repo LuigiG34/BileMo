@@ -21,6 +21,7 @@ class TimestampableListener implements EventSubscriber
     public function prePersist(PrePersistEventArgs $event): void
     {
         $entity = $event->getObject();
+        error_log('prePersist triggered for: ' . get_class($entity));
         if($entity instanceof TimestampInterface) {
             $entity->setCreatedAt(new \DateTimeImmutable());
         }

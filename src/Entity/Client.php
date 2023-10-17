@@ -2,13 +2,14 @@
 
 namespace App\Entity;
 
+use App\Model\TimestampInterface;
 use App\Repository\ClientRepository;
 use App\Traits\TimestampableTrait;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ClientRepository::class)]
-class Client
+class Client implements TimestampInterface
 {
     use TimestampableTrait;
 

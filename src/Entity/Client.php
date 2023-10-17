@@ -7,6 +7,7 @@ use App\Repository\ClientRepository;
 use App\Traits\TimestampableTrait;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ClientRepository::class)]
 class Client implements TimestampInterface
@@ -20,18 +21,37 @@ class Client implements TimestampInterface
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Assert\NotBlank]
+    #[Assert\Length(
+        min: 1,
+        max: 255,
+        minMessage: 'Your firstname must be at least {{ limit }} characters long',
+        maxMessage: 'Your firstname cannot be longer than {{ limit }} characters',
+    )]
     #[Groups(['getClients', 'getClientDetails'])]
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255)]
+    #[Assert\NotBlank]
+    #[Assert\Length(
+        min: 1,
+        max: 255,
+        minMessage: 'Your lastname must be at least {{ limit }} characters long',
+        maxMessage: 'Your lastname cannot be longer than {{ limit }} characters',
+    )]
     #[Groups(['getClients', 'getClientDetails'])]
     private ?string $lastname = null;
 
     #[ORM\Column(length: 255)]
+    #[Assert\NotBlank]
+    #[Assert\Email(
+        message: 'The email {{ value }} is not a valid email.',
+    )]
     #[Groups(['getClientDetails'])]
     private ?string $email = null;
 
     #[ORM\Column(length: 12)]
+    #[Assert\NotBlank]
     #[Groups(['getClientDetails'])]
     private ?string $phone = null;
 

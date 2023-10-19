@@ -10,6 +10,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 class User implements UserInterface, PasswordAuthenticatedUserInterface, TimestampInterface
@@ -22,6 +23,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Timesta
     private ?int $id = null;
 
     #[ORM\Column(length: 180, unique: true)]
+    #[Assert\NotBlank(
+        message: 'The email should not be blank',
+    )]
     private ?string $email = null;
 
     #[ORM\Column]
@@ -31,6 +35,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Timesta
      * @var string The hashed password
      */
     #[ORM\Column]
+    #[Assert\NotBlank(
+        message: 'The password should not be blank',
+    )]
     private ?string $password = null;
 
     #[ORM\Column(length: 255)]

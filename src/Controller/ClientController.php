@@ -88,7 +88,7 @@ class ClientController extends AbstractController
         $limit = $request->get('limit', 3);
 
         $clients = $clientRepository->findAllWithPagination($page, $limit, $user);
-    
+
         if (empty($clients)) {
             return $this->json(
                 null,
@@ -109,7 +109,7 @@ class ClientController extends AbstractController
         return $response;
     }
 
-    
+
     /**
      * Récupérer les détails d'un client
      *
@@ -229,14 +229,13 @@ class ClientController extends AbstractController
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour supprimer le client !")]
     public function deleteClient(Client $client, ClientRepository $clientRepository): JsonResponse
     {
-        if($this->getUser() === $client->getUser()) {
+        if ($this->getUser() === $client->getUser()) {
             $clientRepository->remove($client, true);
 
             $response = $this->json(
                 null,
                 Response::HTTP_NO_CONTENT
             );
-
         } else {
             $response = $this->json(
                 [
@@ -248,21 +247,31 @@ class ClientController extends AbstractController
             );
         }
 
-        
-
         return $response;
     }
 
 
     /**
      * Ajouter un nouveau client lié à un utilisateur
-     *
+     * 
+     * @OA\RequestBody(
+     *      description="Client data to be added",
+     *      required=true,
+     *      @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="firstname", type="string", example="John"),
+     *        @OA\Property(property="lastname", type="string", example="Doe"),
+     *        @OA\Property(property="email", type="string", example="john.doe@email.com"),
+     *        @OA\Property(property="phone", type="string", example="+33086786303")
+     *     )
+     * )
+     * 
      * @OA\Response(
      *     response=201,
      *     description="Ajouter les données d'un client",
      *     @OA\JsonContent(
-     *        type="array",
-     *        @OA\Items(ref=@Model(type=Client::class, groups={"getClientDetails"}))
+     *        type="object",
+     *        @OA\Property(property="message", type="string", example="Nouveau client ajouté.")
      *     )
      * )
      * 
@@ -276,60 +285,62 @@ class ClientController extends AbstractController
      *     )
      * )
      * 
+     * @OA\Response(
+     *     response=422,
+     *     description="Les erreurs de validation de l'entité",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="message", type="string", example="This value should not be blank")
+     *     )
+     * )
+     * 
      * @OA\Tag(name="Clients")
      * 
      * @param Request $request
-     * @param SerializerInterface $serializer
      * @param ClientRepository $clientRepository
-     * @param UserRepository $userRepository
      * @param UrlGeneratorInterface $urlGenerator
-     * @param ValidatorInterface $validator
-     * @param TagAwareCacheInterface $cache
      * @return JsonResponse
      */
     #[Route('/api/clients', name: 'addClient', methods: ['POST'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour ajouter le client !")]
-    public function addClient(Request $request, ClientRepository $clientRepository, UserRepository $userRepository, UrlGeneratorInterface $urlGenerator, ValidatorInterface $validator): JsonResponse
+    public function addClient(Request $request, ClientRepository $clientRepository, UrlGeneratorInterface $urlGenerator): JsonResponse
     {
         $client = new Client();
 
         $form = $this->createForm(ClientType::class, $client);
-        dump($request->getContent());
         $form->handleRequest($request);
 
-        if($form->isSubmitted()) {
-            // Add debug statements to inspect the form data and client entity
-            dump('Form Data:', $form->getData());
-            dump('Client Entity:', $client);
-        
-            dd('Form is valid');
-        }else{
-            // Add debug statements to inspect the form data and client entity
-            dump('Form Data:', $form->getData());
-            dump('Client Entity:', $client);
-        
-            dd('Form is not valid');
+        if ($form->isSubmitted()) {
+            if ($form->isValid()) {
+
+                $client->setUser($this->getUser());
+                $clientRepository->save($client, true);
+
+                $location = $urlGenerator->generate('getClientDetails', ['id' => $client->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
+                $response = $this->json(
+                    ["message" => "Nouveau client ajouté."],
+                    Response::HTTP_CREATED,
+                    ["Location" => $location]
+                );
+
+                return $response;
+
+            } else {
+
+                $formErrors = $form->getErrors(true, true);
+
+                $errors = [];
+                foreach ($formErrors as $error) {
+                    $errors[] = $error->getMessage();
+                }
+
+                return $this->json(
+                    ["errors" => $errors],
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                    ['Content-Type' => 'application/json']
+                );
+
+            }
         }
-        
-        // $client = $serializer->deserialize($request->getContent(), Client::class, 'json');
-        // dd($client);
-
-        // $errors = $validator->validate($client);
-        // if($errors->count() > 0) {
-        //     return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
-        // }
-        
-        // $content = $request->toArray();
-        // $client->setUser($userRepository->find($content['idUser']));
-        // $clientRepository->save($client, true);
-
-        // $location = $urlGenerator->generate('getClientDetails', ['id' => $client->getId(), UrlGeneratorInterface::ABSOLUTE_URL]);
-        // $response = $this->json(
-        //     null,
-        //     Response::HTTP_CREATED,
-        //     ["Location" => $location]
-        // );
-
-        // return $response;
     }
 }

@@ -21,7 +21,9 @@ class Client implements TimestampInterface
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(
+        message: 'The firstname should not be blank',
+    )]
     #[Assert\Length(
         min: 1,
         max: 255,
@@ -32,7 +34,9 @@ class Client implements TimestampInterface
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(
+        message: 'The lastname should not be blank',
+    )]
     #[Assert\Length(
         min: 1,
         max: 255,
@@ -43,7 +47,9 @@ class Client implements TimestampInterface
     private ?string $lastname = null;
 
     #[ORM\Column(length: 255)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(
+        message: 'The email should not be blank',
+    )]
     #[Assert\Email(
         message: 'The email {{ value }} is not a valid email.',
     )]
@@ -51,7 +57,9 @@ class Client implements TimestampInterface
     private ?string $email = null;
 
     #[ORM\Column(length: 12)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(
+        message: 'The phone should not be blank',
+    )]
     #[Groups(['getClientDetails'])]
     private ?string $phone = null;
 

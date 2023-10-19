@@ -36,6 +36,21 @@ class ClientController extends AbstractController
      *      )
      * )
      * 
+     * @OA\Response(
+     *     response=204,
+     *     description="Pagination trop élévé, pas de clients retourné.",
+     * )
+     * 
+     * @OA\Response(
+     *     response=401,
+     *     description="Le Token JWT n'est pas valide",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="code", type="interger", example="401"),
+     *        @OA\Property(property="message", type="string", example="Invalid JWT Token")
+     *     )
+     * )
+     * 
      * @OA\Parameter(
      *     name="page",
      *     in="query",
@@ -62,8 +77,6 @@ class ClientController extends AbstractController
      * @param User $user
      * @param Request $request
      * @param ClientRepository $clientRepository
-     * @param SerializerInterface $serializer
-     * @param TagAwareCacheInterface $cache
      * @return JsonResponse
      */
     #[Route('/api/users/{id}/clients', name: 'getClients', methods: ['GET'])]
@@ -76,6 +89,13 @@ class ClientController extends AbstractController
 
         $clients = $clientRepository->findAllWithPagination($page, $limit, $user);
     
+        if (empty($clients)) {
+            return $this->json(
+                null,
+                Response::HTTP_NO_CONTENT
+            );
+        }
+
         $response = $this->json(
             $clients,
             Response::HTTP_OK,
@@ -102,6 +122,26 @@ class ClientController extends AbstractController
      *      )
      * )
      * 
+     * @OA\Response(
+     *     response=404,
+     *     description="Erreur le client n'existe pas",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="status", type="interger", example="404"),
+     *        @OA\Property(property="message", type="string", example="App\\Entity\\Client object not found by the @ParamConverter annotation.")
+     *     )
+     * )
+     * 
+     * @OA\Response(
+     *     response=401,
+     *     description="Le Token JWT n'est pas valide",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="code", type="interger", example="401"),
+     *        @OA\Property(property="message", type="string", example="Invalid JWT Token")
+     *     )
+     * )
+     * 
      * @OA\Parameter(
      *     name="id",
      *     in="query",
@@ -112,7 +152,6 @@ class ClientController extends AbstractController
      * @OA\Tag(name="Clients")
      * 
      * @param Client $client
-     * @param SerializerInterface $serializer
      * @return JsonResponse
      */
     #[Route('/api/clients/{id}', name: 'getClientDetails', methods: ['GET'])]
@@ -141,9 +180,36 @@ class ClientController extends AbstractController
      * @OA\Response(
      *     response=204,
      *     description="Supprime les données d'un client",
+     * )
+     * 
+     * @OA\Response(
+     *     response=403,
+     *     description="Erreur le client n'appartient pas à l'utilisateur",
      *     @OA\JsonContent(
-     *        type="array",
-     *        @OA\Items(ref=@Model(type=Client::class, groups={"getClientDetails"}))
+     *        type="object",
+     *        @OA\Property(property="status", type="interger", example="403"),
+     *        @OA\Property(property="error", type="string", example="Forbidden"),
+     *        @OA\Property(property="message", type="string", example="Le client n'appartient pas à l'utilisateur.")
+     *     )
+     * )
+     * 
+     * @OA\Response(
+     *     response=401,
+     *     description="Le Token JWT n'est pas valide",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="code", type="interger", example="401"),
+     *        @OA\Property(property="message", type="string", example="Invalid JWT Token")
+     *     )
+     * )
+     * 
+     * @OA\Response(
+     *     response=404,
+     *     description="Erreur le client n'existe pas",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="status", type="interger", example="404"),
+     *        @OA\Property(property="message", type="string", example="App\\Entity\\Client object not found by the @ParamConverter annotation.")
      *     )
      * )
      * 
@@ -157,8 +223,6 @@ class ClientController extends AbstractController
      * @OA\Tag(name="Clients")
      * 
      * @param Client $client
-     * @param ClientRepository $clientRepository
-     * @param TagAwareCacheInterface $cache
      * @return JsonResponse
      */
     #[Route('/api/clients/{id}', name: 'deleteClient', methods: ['DELETE'])]
@@ -172,9 +236,14 @@ class ClientController extends AbstractController
                 null,
                 Response::HTTP_NO_CONTENT
             );
+
         } else {
             $response = $this->json(
-                ["message" => "Vous ne pouvez pas supprimer le client d'un autre utilisateur."],
+                [
+                    "status" => Response::HTTP_FORBIDDEN,
+                    "error" => "Forbidden",
+                    "message" => "Le client n'appartient pas à l'utilisateur."
+                ],
                 Response::HTTP_FORBIDDEN
             );
         }
@@ -194,6 +263,16 @@ class ClientController extends AbstractController
      *     @OA\JsonContent(
      *        type="array",
      *        @OA\Items(ref=@Model(type=Client::class, groups={"getClientDetails"}))
+     *     )
+     * )
+     * 
+     * @OA\Response(
+     *     response=401,
+     *     description="Le Token JWT n'est pas valide",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="code", type="interger", example="401"),
+     *        @OA\Property(property="message", type="string", example="Invalid JWT Token")
      *     )
      * )
      * 

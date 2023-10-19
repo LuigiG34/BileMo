@@ -30,6 +30,21 @@ class ProductController extends AbstractController
      *      )
      * )
      * 
+     * @OA\Response(
+     *     response=204,
+     *     description="Pagination trop élévé, pas de produit retourné.",
+     * )
+     * 
+     * @OA\Response(
+     *     response=401,
+     *     description="Le Token JWT n'est pas valide",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="code", type="interger", example="401"),
+     *        @OA\Property(property="message", type="string", example="Invalid JWT Token")
+     *     )
+     * )
+     * 
      * @OA\Parameter(
      *     name="page",
      *     in="query",
@@ -59,6 +74,13 @@ class ProductController extends AbstractController
         $limit = $request->get('limit', 3);
     
         $products = $productRepository->findAllWithPagination($page, $limit);
+
+        if (empty($products)) {
+            return $this->json(
+                null,
+                Response::HTTP_NO_CONTENT
+            );
+        }
     
         $response = $this->json(
             $products,
@@ -84,6 +106,26 @@ class ProductController extends AbstractController
      *          type="array",
      *          @OA\Items(ref=@Model(type=Product::class, groups={"getProductDetails"}))
      *      )
+     * )
+     * 
+     * @OA\Response(
+     *     response=401,
+     *     description="Le Token JWT n'est pas valide",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="code", type="interger", example="401"),
+     *        @OA\Property(property="message", type="string", example="Invalid JWT Token")
+     *     )
+     * )
+     * 
+     * @OA\Response(
+     *     response=404,
+     *     description="Erreur le produit n'existe pas",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="status", type="interger", example="404"),
+     *        @OA\Property(property="message", type="string", example="App\\Entity\\Product object not found by the @ParamConverter annotation.")
+     *     )
      * )
      * 
      * @OA\Parameter(

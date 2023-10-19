@@ -10,12 +10,10 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Contracts\Cache\TagAwareCacheInterface;
-use Symfony\Contracts\Cache\ItemInterface;
 use OpenApi\Annotations as OA;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use Nelmio\ApiDocBundle\Annotation\Security;
+use Symfony\Component\HttpKernel\Attribute\Cache;
 
 class ProductController extends AbstractController
 {
@@ -50,27 +48,29 @@ class ProductController extends AbstractController
      *
      * @param Request $request
      * @param ProductRepository $productRepository
-     * @param SerializerInterface $serializer
-     * @param TagAwareCacheInterface $cache
      * @return JsonResponse
      */
     #[Route('/api/products', name: 'getProducts', methods: ['GET'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour voir les produits !")]
-    public function getProducts(Request $request, ProductRepository $productRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
+    #[Cache(smaxage: "60")]
+    public function getProducts(Request $request, ProductRepository $productRepository): JsonResponse
     {
         $page = $request->get('page', 1);
         $limit = $request->get('limit', 3);
+    
+        $products = $productRepository->findAllWithPagination($page, $limit);
+    
+        $response = $this->json(
+            $products,
+            Response::HTTP_OK,
+            ['Content-Type' => 'application/json'],
+            ['groups' => 'getProducts']
+        );
 
-        $idCache = "getProducts-" . $page . "-" . $limit;
+        $response->setEtag(md5($response->getContent()));
+        $response->setPublic();
 
-        $jsonProducts = $cache->get($idCache, function (ItemInterface $item) use ($productRepository, $page, $limit, $serializer) {
-            $item->tag("productsCache");
-            $item->expiresAfter(60);
-            $products = $productRepository->findAllWithPagination($page, $limit);
-            return $serializer->serialize($products, 'json', ['groups' => 'getProducts']);
-        });
-
-        return new JsonResponse($jsonProducts, Response::HTTP_OK, [], true);
+        return $response;
     }
 
 
@@ -96,32 +96,24 @@ class ProductController extends AbstractController
      * @OA\Tag(name="Products")
      * 
      * @param Product $product
-     * @param SerializerInterface $serializer
      * @return JsonResponse
      */
     #[Route('/api/products/{id}', name: 'getProduct', methods: ['GET'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour voir le produit !")]
-    public function getProductDetails(Product $product ,SerializerInterface $serializer): JsonResponse
+    #[Cache(smaxage: "60")]
+    public function getProductDetails(Product $product): JsonResponse
     {
-        $jsonProduct = $serializer->serialize($product, 'json', ['groups' => 'getProductDetails']);
-        return new JsonResponse($jsonProduct, Response::HTTP_OK, [], true);
+        $response = $this->json(
+            $product,
+            Response::HTTP_OK,
+            ['Content-Type' => 'application/json'],
+            ['groups' => 'getProductDetails']
+        );
+
+        $response->setEtag(md5($response->getContent()));
+        $response->setPublic();
+        $response->setLastModified($product->getUpdatedAt());
+
+        return $response;
     }
-
-    // #[Cache(lastModified: 'product.getUpdatedAt()', etag: "'Product' ~ product.getId() ~ product.getUpdatedAt().getTimestamp()")]
-    // public function showAcion(Product $product)
-    // {
-    //     $response = $this->json(
-    //         $product,
-    //         200,
-    //         ['Content-Type' => 'application/json'],
-    //         ['groups' => 'show_product']
-    //     );
-
-    //     $response->setEtag(md5($response->getContent()));
-    //     $response->setPublic(); // make sure the response is public/cacheable
-    //     $response->setLastModified($product->getUpdatedAt());
-
-    //     return $response;
-
-    // }
 }

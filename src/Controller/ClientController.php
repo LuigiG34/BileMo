@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Entity\Client;
+use App\Form\ClientType;
 use App\Repository\ClientRepository;
 use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -14,12 +15,11 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
-use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Contracts\Cache\TagAwareCacheInterface;
-use Symfony\Contracts\Cache\ItemInterface;
 use OpenApi\Annotations as OA;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use Nelmio\ApiDocBundle\Annotation\Security;
+use Symfony\Component\HttpKernel\Attribute\Cache;
+
 
 class ClientController extends AbstractController
 {
@@ -68,21 +68,25 @@ class ClientController extends AbstractController
      */
     #[Route('/api/users/{id}/clients', name: 'getClients', methods: ['GET'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour voir les clients !")]
-    public function getClients(User $user, Request $request, ClientRepository $clientRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
+    #[Cache(smaxage: "60")]
+    public function getClients(User $user, Request $request, ClientRepository $clientRepository): JsonResponse
     {
         $page = $request->get('page', 1);
         $limit = $request->get('limit', 3);
 
-        $idCache = "getClients-" . $page . "-" . $limit . "-" . $user->getId();
+        $clients = $clientRepository->findAllWithPagination($page, $limit, $user);
+    
+        $response = $this->json(
+            $clients,
+            Response::HTTP_OK,
+            ['Content-Type' => 'application/json'],
+            ['groups' => 'getClients']
+        );
 
-        $jsonClients = $cache->get($idCache, function (ItemInterface $item) use ($clientRepository, $page, $limit, $serializer, $user) {
-            $item->tag("clientsCache");
-            $item->expiresAfter(60);
-            $clients = $clientRepository->findAllWithPagination($page, $limit, $user);
-            return $serializer->serialize($clients, 'json', ['groups' => 'getClients']);
-        });
+        $response->setEtag(md5($response->getContent()));
+        $response->setPublic();
 
-        return new JsonResponse($jsonClients, Response::HTTP_OK, [], true);
+        return $response;
     }
 
     
@@ -113,10 +117,21 @@ class ClientController extends AbstractController
      */
     #[Route('/api/clients/{id}', name: 'getClientDetails', methods: ['GET'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour voir le client !")]
-    public function getClientDetails(Client $client ,SerializerInterface $serializer): JsonResponse
+    #[Cache(smaxage: "60")]
+    public function getClientDetails(Client $client): JsonResponse
     {
-        $jsonClient = $serializer->serialize($client, 'json', ['groups' => 'getClientDetails']);
-        return new JsonResponse($jsonClient, Response::HTTP_OK, [], true);
+        $response = $this->json(
+            $client,
+            Response::HTTP_OK,
+            ['Content-Type' => 'application/json'],
+            ['groups' => 'getClientDetails']
+        );
+
+        $response->setEtag(md5($response->getContent()));
+        $response->setPublic();
+        $response->setLastModified($client->getUpdatedAt());
+
+        return $response;
     }
 
 
@@ -148,11 +163,25 @@ class ClientController extends AbstractController
      */
     #[Route('/api/clients/{id}', name: 'deleteClient', methods: ['DELETE'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour supprimer le client !")]
-    public function deleteClient(Client $client, ClientRepository $clientRepository, TagAwareCacheInterface $cache): JsonResponse
+    public function deleteClient(Client $client, ClientRepository $clientRepository): JsonResponse
     {
-        $clientRepository->remove($client, true);
-        $cache->invalidateTags(["clientsCache"]);
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        if($this->getUser() === $client->getUser()) {
+            $clientRepository->remove($client, true);
+
+            $response = $this->json(
+                null,
+                Response::HTTP_NO_CONTENT
+            );
+        } else {
+            $response = $this->json(
+                ["message" => "Vous ne pouvez pas supprimer le client d'un autre utilisateur."],
+                Response::HTTP_FORBIDDEN
+            );
+        }
+
+        
+
+        return $response;
     }
 
 
@@ -181,23 +210,47 @@ class ClientController extends AbstractController
      */
     #[Route('/api/clients', name: 'addClient', methods: ['POST'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour ajouter le client !")]
-    public function addClient(Request $request, SerializerInterface $serializer, ClientRepository $clientRepository, UserRepository $userRepository, UrlGeneratorInterface $urlGenerator, ValidatorInterface $validator, TagAwareCacheInterface $cache): JsonResponse
+    public function addClient(Request $request, ClientRepository $clientRepository, UserRepository $userRepository, UrlGeneratorInterface $urlGenerator, ValidatorInterface $validator): JsonResponse
     {
-        $client = $serializer->deserialize($request->getContent(), Client::class, 'json');
+        $client = new Client();
 
-        $errors = $validator->validate($client);
-        if($errors->count() > 0) {
-            return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
+        $form = $this->createForm(ClientType::class, $client);
+        dump($request->getContent());
+        $form->handleRequest($request);
+
+        if($form->isSubmitted()) {
+            // Add debug statements to inspect the form data and client entity
+            dump('Form Data:', $form->getData());
+            dump('Client Entity:', $client);
+        
+            dd('Form is valid');
+        }else{
+            // Add debug statements to inspect the form data and client entity
+            dump('Form Data:', $form->getData());
+            dump('Client Entity:', $client);
+        
+            dd('Form is not valid');
         }
         
-        $content = $request->toArray();
-        $client->setUser($userRepository->find($content['idUser']));
-        $clientRepository->save($client, true);
+        // $client = $serializer->deserialize($request->getContent(), Client::class, 'json');
+        // dd($client);
 
-        $jsonClient = $serializer->serialize($client, "json", ['groups' => 'getClientDetails']);
+        // $errors = $validator->validate($client);
+        // if($errors->count() > 0) {
+        //     return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
+        // }
+        
+        // $content = $request->toArray();
+        // $client->setUser($userRepository->find($content['idUser']));
+        // $clientRepository->save($client, true);
 
-        $location = $urlGenerator->generate('getClientDetails', ['id' => $client->getId(), UrlGeneratorInterface::ABSOLUTE_URL]);
-        $cache->invalidateTags(["clientsCache"]);
-        return new JsonResponse($jsonClient, Response::HTTP_CREATED, ["Location" => $location], true);
+        // $location = $urlGenerator->generate('getClientDetails', ['id' => $client->getId(), UrlGeneratorInterface::ABSOLUTE_URL]);
+        // $response = $this->json(
+        //     null,
+        //     Response::HTTP_CREATED,
+        //     ["Location" => $location]
+        // );
+
+        // return $response;
     }
 }

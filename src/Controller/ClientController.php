@@ -98,7 +98,7 @@ class ClientController extends AbstractController
             $clients,
             Response::HTTP_OK,
             ['Content-Type' => 'application/json'],
-            ['groups' => 'getClients']
+            ['groups' => 'getClients', 'json_encode_options' => JSON_UNESCAPED_SLASHES]
         );
 
         $response->setEtag(md5($response->getContent()));
@@ -161,7 +161,7 @@ class ClientController extends AbstractController
             $client,
             Response::HTTP_OK,
             ['Content-Type' => 'application/json'],
-            ['groups' => 'getClientDetails']
+            ['groups' => 'getClientDetails', 'json_encode_options' => JSON_UNESCAPED_SLASHES]
         );
 
         $response->setEtag(md5($response->getContent()));

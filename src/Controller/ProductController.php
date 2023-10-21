@@ -86,7 +86,7 @@ class ProductController extends AbstractController
             $products,
             Response::HTTP_OK,
             ['Content-Type' => 'application/json'],
-            ['groups' => 'getProducts']
+            ['groups' => 'getProducts', 'json_encode_options' => JSON_UNESCAPED_SLASHES]
         );
 
         $response->setEtag(md5($response->getContent()));
@@ -149,7 +149,7 @@ class ProductController extends AbstractController
             $product,
             Response::HTTP_OK,
             ['Content-Type' => 'application/json'],
-            ['groups' => 'getProductDetails']
+            ['groups' => 'getProductDetails', 'json_encode_options' => JSON_UNESCAPED_SLASHES]
         );
 
         $response->setEtag(md5($response->getContent()));

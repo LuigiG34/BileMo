@@ -4,8 +4,8 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Entity\Client;
+use App\Form\ClientType;
 use App\Repository\ClientRepository;
-use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,13 +13,11 @@ use Symfony\Component\Routing\Annotation\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
-use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Contracts\Cache\TagAwareCacheInterface;
-use Symfony\Contracts\Cache\ItemInterface;
 use OpenApi\Annotations as OA;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use Nelmio\ApiDocBundle\Annotation\Security;
+use Symfony\Component\HttpKernel\Attribute\Cache;
+
 
 class ClientController extends AbstractController
 {
@@ -34,6 +32,21 @@ class ClientController extends AbstractController
      *          type="array",
      *          @OA\Items(ref=@Model(type=Client::class, groups={"getClients"}))
      *      )
+     * )
+     * 
+     * @OA\Response(
+     *     response=204,
+     *     description="Pagination trop élévé, pas de clients retourné.",
+     * )
+     * 
+     * @OA\Response(
+     *     response=401,
+     *     description="Le Token JWT n'est pas valide",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="code", type="interger", example="401"),
+     *        @OA\Property(property="message", type="string", example="Invalid JWT Token")
+     *     )
      * )
      * 
      * @OA\Parameter(
@@ -62,30 +75,39 @@ class ClientController extends AbstractController
      * @param User $user
      * @param Request $request
      * @param ClientRepository $clientRepository
-     * @param SerializerInterface $serializer
-     * @param TagAwareCacheInterface $cache
      * @return JsonResponse
      */
     #[Route('/api/users/{id}/clients', name: 'getClients', methods: ['GET'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour voir les clients !")]
-    public function getClients(User $user, Request $request, ClientRepository $clientRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
+    #[Cache(smaxage: "60")]
+    public function getClients(User $user, Request $request, ClientRepository $clientRepository): JsonResponse
     {
         $page = $request->get('page', 1);
         $limit = $request->get('limit', 3);
 
-        $idCache = "getClients-" . $page . "-" . $limit . "-" . $user->getId();
+        $clients = $clientRepository->findAllWithPagination($page, $limit, $user);
 
-        $jsonClients = $cache->get($idCache, function (ItemInterface $item) use ($clientRepository, $page, $limit, $serializer, $user) {
-            $item->tag("clientsCache");
-            $item->expiresAfter(60);
-            $clients = $clientRepository->findAllWithPagination($page, $limit, $user);
-            return $serializer->serialize($clients, 'json', ['groups' => 'getClients']);
-        });
+        if (empty($clients)) {
+            return $this->json(
+                null,
+                Response::HTTP_NO_CONTENT
+            );
+        }
 
-        return new JsonResponse($jsonClients, Response::HTTP_OK, [], true);
+        $response = $this->json(
+            $clients,
+            Response::HTTP_OK,
+            ['Content-Type' => 'application/json'],
+            ['groups' => 'getClients', 'json_encode_options' => JSON_UNESCAPED_SLASHES]
+        );
+
+        $response->setEtag(md5($response->getContent()));
+        $response->setPublic();
+
+        return $response;
     }
 
-    
+
     /**
      * Récupérer les détails d'un client
      *
@@ -98,6 +120,26 @@ class ClientController extends AbstractController
      *      )
      * )
      * 
+     * @OA\Response(
+     *     response=404,
+     *     description="Erreur le client n'existe pas",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="status", type="interger", example="404"),
+     *        @OA\Property(property="message", type="string", example="App\\Entity\\Client object not found by the @ParamConverter annotation.")
+     *     )
+     * )
+     * 
+     * @OA\Response(
+     *     response=401,
+     *     description="Le Token JWT n'est pas valide",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="code", type="interger", example="401"),
+     *        @OA\Property(property="message", type="string", example="Invalid JWT Token")
+     *     )
+     * )
+     * 
      * @OA\Parameter(
      *     name="id",
      *     in="query",
@@ -108,15 +150,25 @@ class ClientController extends AbstractController
      * @OA\Tag(name="Clients")
      * 
      * @param Client $client
-     * @param SerializerInterface $serializer
      * @return JsonResponse
      */
     #[Route('/api/clients/{id}', name: 'getClientDetails', methods: ['GET'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour voir le client !")]
-    public function getClientDetails(Client $client ,SerializerInterface $serializer): JsonResponse
+    #[Cache(smaxage: "60")]
+    public function getClientDetails(Client $client): JsonResponse
     {
-        $jsonClient = $serializer->serialize($client, 'json', ['groups' => 'getClientDetails']);
-        return new JsonResponse($jsonClient, Response::HTTP_OK, [], true);
+        $response = $this->json(
+            $client,
+            Response::HTTP_OK,
+            ['Content-Type' => 'application/json'],
+            ['groups' => 'getClientDetails', 'json_encode_options' => JSON_UNESCAPED_SLASHES]
+        );
+
+        $response->setEtag(md5($response->getContent()));
+        $response->setPublic();
+        $response->setLastModified($client->getUpdatedAt());
+
+        return $response;
     }
 
 
@@ -126,9 +178,36 @@ class ClientController extends AbstractController
      * @OA\Response(
      *     response=204,
      *     description="Supprime les données d'un client",
+     * )
+     * 
+     * @OA\Response(
+     *     response=403,
+     *     description="Erreur le client n'appartient pas à l'utilisateur",
      *     @OA\JsonContent(
-     *        type="array",
-     *        @OA\Items(ref=@Model(type=Client::class, groups={"getClientDetails"}))
+     *        type="object",
+     *        @OA\Property(property="status", type="interger", example="403"),
+     *        @OA\Property(property="error", type="string", example="Forbidden"),
+     *        @OA\Property(property="message", type="string", example="Le client n'appartient pas à l'utilisateur.")
+     *     )
+     * )
+     * 
+     * @OA\Response(
+     *     response=401,
+     *     description="Le Token JWT n'est pas valide",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="code", type="interger", example="401"),
+     *        @OA\Property(property="message", type="string", example="Invalid JWT Token")
+     *     )
+     * )
+     * 
+     * @OA\Response(
+     *     response=404,
+     *     description="Erreur le client n'existe pas",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="status", type="interger", example="404"),
+     *        @OA\Property(property="message", type="string", example="App\\Entity\\Client object not found by the @ParamConverter annotation.")
      *     )
      * )
      * 
@@ -142,62 +221,124 @@ class ClientController extends AbstractController
      * @OA\Tag(name="Clients")
      * 
      * @param Client $client
-     * @param ClientRepository $clientRepository
-     * @param TagAwareCacheInterface $cache
      * @return JsonResponse
      */
     #[Route('/api/clients/{id}', name: 'deleteClient', methods: ['DELETE'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour supprimer le client !")]
-    public function deleteClient(Client $client, ClientRepository $clientRepository, TagAwareCacheInterface $cache): JsonResponse
+    public function deleteClient(Client $client, ClientRepository $clientRepository): JsonResponse
     {
-        $clientRepository->remove($client, true);
-        $cache->invalidateTags(["clientsCache"]);
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        if ($this->getUser() === $client->getUser()) {
+            $clientRepository->remove($client, true);
+
+            $response = $this->json(
+                null,
+                Response::HTTP_NO_CONTENT
+            );
+        } else {
+            $response = $this->json(
+                [
+                    "status" => Response::HTTP_FORBIDDEN,
+                    "error" => "Forbidden",
+                    "message" => "Le client n'appartient pas à l'utilisateur."
+                ],
+                Response::HTTP_FORBIDDEN
+            );
+        }
+
+        return $response;
     }
 
 
     /**
      * Ajouter un nouveau client lié à un utilisateur
-     *
+     * 
+     * @OA\RequestBody(
+     *      description="Client data to be added",
+     *      required=true,
+     *      @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="firstname", type="string", example="John"),
+     *        @OA\Property(property="lastname", type="string", example="Doe"),
+     *        @OA\Property(property="email", type="string", example="john.doe@email.com"),
+     *        @OA\Property(property="phone", type="string", example="+33086786303")
+     *     )
+     * )
+     * 
      * @OA\Response(
      *     response=201,
      *     description="Ajouter les données d'un client",
      *     @OA\JsonContent(
-     *        type="array",
-     *        @OA\Items(ref=@Model(type=Client::class, groups={"getClientDetails"}))
+     *        type="object",
+     *        @OA\Property(property="message", type="string", example="Nouveau client ajouté.")
+     *     )
+     * )
+     * 
+     * @OA\Response(
+     *     response=401,
+     *     description="Le Token JWT n'est pas valide",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="code", type="interger", example="401"),
+     *        @OA\Property(property="message", type="string", example="Invalid JWT Token")
+     *     )
+     * )
+     * 
+     * @OA\Response(
+     *     response=422,
+     *     description="Les erreurs de validation de l'entité",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="message", type="string", example="This value should not be blank")
      *     )
      * )
      * 
      * @OA\Tag(name="Clients")
      * 
      * @param Request $request
-     * @param SerializerInterface $serializer
      * @param ClientRepository $clientRepository
-     * @param UserRepository $userRepository
      * @param UrlGeneratorInterface $urlGenerator
-     * @param ValidatorInterface $validator
-     * @param TagAwareCacheInterface $cache
      * @return JsonResponse
      */
     #[Route('/api/clients', name: 'addClient', methods: ['POST'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour ajouter le client !")]
-    public function addClient(Request $request, SerializerInterface $serializer, ClientRepository $clientRepository, UserRepository $userRepository, UrlGeneratorInterface $urlGenerator, ValidatorInterface $validator, TagAwareCacheInterface $cache): JsonResponse
+    public function addClient(Request $request, ClientRepository $clientRepository, UrlGeneratorInterface $urlGenerator): JsonResponse
     {
-        $client = $serializer->deserialize($request->getContent(), Client::class, 'json');
+        $client = new Client();
 
-        $errors = $validator->validate($client);
-        if($errors->count() > 0) {
-            return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
+        $form = $this->createForm(ClientType::class, $client);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted()) {
+            if ($form->isValid()) {
+
+                $client->setUser($this->getUser());
+                $clientRepository->save($client, true);
+
+                $location = $urlGenerator->generate('getClientDetails', ['id' => $client->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
+                $response = $this->json(
+                    ["message" => "Nouveau client ajouté."],
+                    Response::HTTP_CREATED,
+                    ["Location" => $location]
+                );
+
+                return $response;
+
+            } else {
+
+                $formErrors = $form->getErrors(true, true);
+
+                $errors = [];
+                foreach ($formErrors as $error) {
+                    $errors[] = $error->getMessage();
+                }
+
+                return $this->json(
+                    ["errors" => $errors],
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                    ['Content-Type' => 'application/json']
+                );
+
+            }
         }
-        
-        $content = $request->toArray();
-        $client->setUser($userRepository->find($content['idUser']));
-        $clientRepository->save($client, true);
-
-        $jsonClient = $serializer->serialize($client, "json", ['groups' => 'getClientDetails']);
-
-        $location = $urlGenerator->generate('getClientDetails', ['id' => $client->getId(), UrlGeneratorInterface::ABSOLUTE_URL]);
-        $cache->invalidateTags(["clientsCache"]);
-        return new JsonResponse($jsonClient, Response::HTTP_CREATED, ["Location" => $location], true);
     }
 }

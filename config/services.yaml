@@ -32,3 +32,17 @@ services:
             $contentTypes: ['json']
         tags:
             - { name: 'kernel.event_listener', event: 'kernel.request', method: 'onKernelRequest' }
+
+    App\Serializer\Normalizer\ProductHateoasNormalizer:
+        arguments: 
+            $objectNormalizer: '@serializer.normalizer.object'
+            $urlGenerator: '@router'
+        tags:
+            - { name: 'serializer.normalizer', priority: 100 }
+
+    App\Serializer\Normalizer\ClientHateoasNormalizer:
+        arguments: 
+            $objectNormalizer: '@serializer.normalizer.object'
+            $urlGenerator: '@router'
+        tags:
+            - { name: 'serializer.normalizer', priority: 100 }

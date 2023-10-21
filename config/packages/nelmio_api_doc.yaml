@@ -24,6 +24,19 @@ nelmio_api_doc:
                                 application/json:
                                     schema:
                                         $ref: '#/components/schemas/Token'
+                        '401':
+                            description: Les identifiants sont pas valident
+                            content:
+                                application/json:
+                                    schema:
+                                        $ref: '#/components/schemas/Error401'
+                        '400':
+                            description: Il manque des données (email ou mot de passe)
+                            content:
+                                application/json:
+                                    schema:
+                                        $ref: '#/components/schemas/Error400'
+
         components:
             schemas:
                 Token:
@@ -41,6 +54,28 @@ nelmio_api_doc:
                         password:
                             type: string
                             default: password
+                Error401:
+                    type: object
+                    properties:
+                        code:
+                            type: integer
+                            default: 401
+                            readOnly: true
+                        message:
+                            type: string
+                            default: "Invalid credentials."
+                            readOnly: true
+                Error400:
+                    type: object
+                    properties:
+                        code:
+                            type: integer
+                            default: 400
+                            readOnly: true
+                        message:
+                            type: string
+                            default: "The key \"nameOfKey\" must be provided."
+                            readOnly: true
             securitySchemes:
                 bearerAuth:            
                     type: apiKey

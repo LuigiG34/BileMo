@@ -73,7 +73,7 @@
         ]
     },
     "phpunit/phpunit": {
-        "version": "9.6",
+        "version": "10.4",
         "recipe": {
             "repo": "github.com/symfony/recipes",
             "branch": "main",

@@ -126,7 +126,7 @@ class ClientController extends AbstractController
      *     @OA\JsonContent(
      *        type="object",
      *        @OA\Property(property="status", type="interger", example="404"),
-     *        @OA\Property(property="message", type="string", example="App\\Entity\\Client object not found by the @ParamConverter annotation.")
+     *        @OA\Property(property="message", type="string", example="App\\Entity\\Client object not found by the ParamConverter annotation.")
      *     )
      * )
      * 
@@ -207,7 +207,7 @@ class ClientController extends AbstractController
      *     @OA\JsonContent(
      *        type="object",
      *        @OA\Property(property="status", type="interger", example="404"),
-     *        @OA\Property(property="message", type="string", example="App\\Entity\\Client object not found by the @ParamConverter annotation.")
+     *        @OA\Property(property="message", type="string", example="App\\Entity\\Client object not found by the ParamConverter annotation.")
      *     )
      * )
      * 

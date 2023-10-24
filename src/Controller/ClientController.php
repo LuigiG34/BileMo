@@ -2,7 +2,6 @@
 
 namespace App\Controller;
 
-use App\Entity\User;
 use App\Entity\Client;
 use App\Form\ClientType;
 use App\Repository\ClientRepository;
@@ -13,10 +12,9 @@ use Symfony\Component\Routing\Annotation\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
-use OpenApi\Annotations as OA;
-use Nelmio\ApiDocBundle\Annotation\Model;
-use Nelmio\ApiDocBundle\Annotation\Security;
 use Symfony\Component\HttpKernel\Attribute\Cache;
+use OpenApi\Annotations as OA;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 
 
 class ClientController extends AbstractController
@@ -30,7 +28,25 @@ class ClientController extends AbstractController
      *      description="Retourne la listes des clients associés à un utilisateur",
      *      @OA\JsonContent(
      *          type="array",
-     *          @OA\Items(ref=@Model(type=Client::class, groups={"getClients"}))
+     *          @OA\Items(
+     *              @OA\Property(property="id", type="integer"),
+     *              @OA\Property(property="firstname", type="string"),
+     *              @OA\Property(property="lastname", type="string"),
+     *              @OA\Property(
+     *                  property="_links",
+     *                  type="object",
+     *                  @OA\Property(
+     *                      property="self",
+     *                      type="object",
+     *                      @OA\Property(property="href", type="string"),
+     *                  ),
+     *                  @OA\Property(
+     *                      property="delete",
+     *                      type="object",
+     *                      @OA\Property(property="href", type="string"),
+     *                  ),
+     *              ),
+     *          )
      *      )
      * )
      * 
@@ -63,29 +79,22 @@ class ClientController extends AbstractController
      *     @OA\Schema(type="int")
      * )
      * 
-     * @OA\Parameter(
-     *     name="id",
-     *     in="query",
-     *     description="L'id de l'utilisateur associés aux clients",
-     *     @OA\Schema(type="int")
-     * )
-     * 
      * @OA\Tag(name="Clients")
      *
-     * @param User $user
      * @param Request $request
      * @param ClientRepository $clientRepository
      * @return JsonResponse
      */
-    #[Route('/api/users/{id}/clients', name: 'getClients', methods: ['GET'])]
+    #[Route('/api/clients', name: 'getClients', methods: ['GET'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour voir les clients !")]
     #[Cache(smaxage: "60")]
-    public function getClients(User $user, Request $request, ClientRepository $clientRepository): JsonResponse
+    #[Security("is_granted('view_list')")]
+    public function getClients(Request $request, ClientRepository $clientRepository): JsonResponse
     {
         $page = $request->get('page', 1);
         $limit = $request->get('limit', 3);
 
-        $clients = $clientRepository->findAllWithPagination($page, $limit, $user);
+        $clients = $clientRepository->findAllWithPagination($page, $limit, $this->getUser());
 
         if (empty($clients)) {
             return $this->json(
@@ -115,9 +124,39 @@ class ClientController extends AbstractController
      *      response=200,
      *      description="Retourne les données d'un client",
      *      @OA\JsonContent(
-     *          type="array",
-     *          @OA\Items(ref=@Model(type=Client::class, groups={"getClientDetails"}))
+     *          type="object",
+     *          @OA\Property(property="id", type="integer"),
+     *          @OA\Property(property="firstname", type="string"),
+     *          @OA\Property(property="lastname", type="string"),
+     *          @OA\Property(property="email", type="string"),
+     *          @OA\Property(property="phone", type="string"),
+     *          @OA\Property(property="createdAt", type="string", format="date-time"),
+     *          @OA\Property(property="updatedAt", type="string", format="date-time", nullable=true),
+     *          @OA\Property(
+     *              property="_links",
+     *              type="object",
+     *              @OA\Property(
+     *                  property="self",
+     *                  type="object",
+     *                  @OA\Property(property="href", type="string"),
+     *              ),
+     *              @OA\Property(
+     *                  property="delete",
+     *                  type="object",
+     *                  @OA\Property(property="href", type="string"),
+     *              ),
+     *          ),
      *      )
+     * )
+     * 
+     * @OA\Response(
+     *     response=403,
+     *     description="Erreur le client n'appartient pas à l'utilisateur",
+     *     @OA\JsonContent(
+     *        type="object",
+     *        @OA\Property(property="status", type="interger", example="403"),
+     *        @OA\Property(property="message", type="string", example="Access denied.")
+     *     )
      * )
      * 
      * @OA\Response(
@@ -126,7 +165,7 @@ class ClientController extends AbstractController
      *     @OA\JsonContent(
      *        type="object",
      *        @OA\Property(property="status", type="interger", example="404"),
-     *        @OA\Property(property="message", type="string", example="App\\Entity\\Client object not found by the ParamConverter annotation.")
+     *        @OA\Property(property="message", type="string", example="App\Entity\Client object not found by the ParamConverter annotation.")
      *     )
      * )
      * 
@@ -140,13 +179,6 @@ class ClientController extends AbstractController
      *     )
      * )
      * 
-     * @OA\Parameter(
-     *     name="id",
-     *     in="query",
-     *     description="L'id du client qu'on souhaite récupérer",
-     *     @OA\Schema(type="int")
-     * )
-     * 
      * @OA\Tag(name="Clients")
      * 
      * @param Client $client
@@ -155,6 +187,7 @@ class ClientController extends AbstractController
     #[Route('/api/clients/{id}', name: 'getClientDetails', methods: ['GET'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour voir le client !")]
     #[Cache(smaxage: "60")]
+    #[Security("is_granted('view_detail', client)")]
     public function getClientDetails(Client $client): JsonResponse
     {
         $response = $this->json(
@@ -186,8 +219,7 @@ class ClientController extends AbstractController
      *     @OA\JsonContent(
      *        type="object",
      *        @OA\Property(property="status", type="interger", example="403"),
-     *        @OA\Property(property="error", type="string", example="Forbidden"),
-     *        @OA\Property(property="message", type="string", example="Le client n'appartient pas à l'utilisateur.")
+     *        @OA\Property(property="message", type="string", example="Access denied.")
      *     )
      * )
      * 
@@ -207,15 +239,8 @@ class ClientController extends AbstractController
      *     @OA\JsonContent(
      *        type="object",
      *        @OA\Property(property="status", type="interger", example="404"),
-     *        @OA\Property(property="message", type="string", example="App\\Entity\\Client object not found by the ParamConverter annotation.")
+     *        @OA\Property(property="message", type="string", example="App\Entity\Client object not found by the ParamConverter annotation.")
      *     )
-     * )
-     * 
-     * @OA\Parameter(
-     *     name="id",
-     *     in="query",
-     *     description="L'id du client que l'on veut supprimer",
-     *     @OA\Schema(type="int")
      * )
      *
      * @OA\Tag(name="Clients")
@@ -225,25 +250,15 @@ class ClientController extends AbstractController
      */
     #[Route('/api/clients/{id}', name: 'deleteClient', methods: ['DELETE'])]
     #[IsGranted('ROLE_USER', message: "Vous n'avez pas les droits suffisants pour supprimer le client !")]
+    #[Security("is_granted('delete', client)")]
     public function deleteClient(Client $client, ClientRepository $clientRepository): JsonResponse
     {
-        if ($this->getUser() === $client->getUser()) {
-            $clientRepository->remove($client, true);
+        $clientRepository->remove($client, true);
 
-            $response = $this->json(
-                null,
-                Response::HTTP_NO_CONTENT
-            );
-        } else {
-            $response = $this->json(
-                [
-                    "status" => Response::HTTP_FORBIDDEN,
-                    "error" => "Forbidden",
-                    "message" => "Le client n'appartient pas à l'utilisateur."
-                ],
-                Response::HTTP_FORBIDDEN
-            );
-        }
+        $response = $this->json(
+            null,
+            Response::HTTP_NO_CONTENT
+        );
 
         return $response;
     }
@@ -322,7 +337,6 @@ class ClientController extends AbstractController
                 );
 
                 return $response;
-
             } else {
 
                 $formErrors = $form->getErrors(true, true);
@@ -337,7 +351,6 @@ class ClientController extends AbstractController
                     Response::HTTP_UNPROCESSABLE_ENTITY,
                     ['Content-Type' => 'application/json']
                 );
-
             }
         }
     }

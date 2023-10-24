@@ -11,8 +11,6 @@ use Symfony\Component\Routing\Annotation\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use OpenApi\Annotations as OA;
-use Nelmio\ApiDocBundle\Annotation\Model;
-use Nelmio\ApiDocBundle\Annotation\Security;
 use Symfony\Component\HttpKernel\Attribute\Cache;
 
 class ProductController extends AbstractController
@@ -26,7 +24,19 @@ class ProductController extends AbstractController
      *      description="Retourne la listes des produits",
      *      @OA\JsonContent(
      *          type="array",
-     *          @OA\Items(ref=@Model(type=Product::class, groups={"getProducts"}))
+     *          @OA\Items(
+     *              @OA\Property(property="id", type="integer"),
+     *              @OA\Property(property="name", type="string"),
+     *              @OA\Property(
+     *                  property="_links",
+     *                  type="object",
+     *                  @OA\Property(
+     *                      property="self",
+     *                      type="object",
+     *                      @OA\Property(property="href", type="string")
+     *                  )
+     *              )
+     *          )
      *      )
      * )
      * 
@@ -72,7 +82,7 @@ class ProductController extends AbstractController
     {
         $page = $request->get('page', 1);
         $limit = $request->get('limit', 3);
-    
+
         $products = $productRepository->findAllWithPagination($page, $limit);
 
         if (empty($products)) {
@@ -81,7 +91,7 @@ class ProductController extends AbstractController
                 Response::HTTP_NO_CONTENT
             );
         }
-    
+
         $response = $this->json(
             $products,
             Response::HTTP_OK,
@@ -103,8 +113,22 @@ class ProductController extends AbstractController
      *      response=200,
      *      description="Retourne les données d'un produit",
      *      @OA\JsonContent(
-     *          type="array",
-     *          @OA\Items(ref=@Model(type=Product::class, groups={"getProductDetails"}))
+     *          type="object",
+     *          @OA\Property(property="id", type="integer"),
+     *          @OA\Property(property="name", type="string"),
+     *          @OA\Property(property="description", type="string"),
+     *          @OA\Property(property="price", type="number", format="float"),
+     *          @OA\Property(property="createdAt", type="string", format="date-time"),
+     *          @OA\Property(property="updatedAt", type="string", format="date-time", nullable=true),
+     *          @OA\Property(
+     *              property="_links",
+     *              type="object",
+     *              @OA\Property(
+     *                  property="self",
+     *                  type="object",
+     *                  @OA\Property(property="href", type="string")
+     *              )
+     *          )
      *      )
      * )
      * 
@@ -124,16 +148,10 @@ class ProductController extends AbstractController
      *     @OA\JsonContent(
      *        type="object",
      *        @OA\Property(property="status", type="interger", example="404"),
-     *        @OA\Property(property="message", type="string", example="App\\Entity\\Product object not found by the ParamConverter annotation.")
+     *        @OA\Property(property="message", type="string", example="App\Entity\Product object not found by the ParamConverter annotation.")
      *     )
      * )
      * 
-     * @OA\Parameter(
-     *     name="id",
-     *     in="query",
-     *     description="L'id du produit qu'on souhaite récupérer",
-     *     @OA\Schema(type="int")
-     * )
      * 
      * @OA\Tag(name="Products")
      * 

@@ -331,9 +331,10 @@ class ClientController extends AbstractController
 
                 $location = $urlGenerator->generate('getClientDetails', ['id' => $client->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
                 $response = $this->json(
-                    ["message" => "Nouveau client ajouté."],
+                    $client,
                     Response::HTTP_CREATED,
-                    ["Location" => $location]
+                    ["Location" => $location],
+                    ['groups' => 'getClientDetails', 'json_encode_options' => JSON_UNESCAPED_SLASHES]
                 );
 
                 return $response;

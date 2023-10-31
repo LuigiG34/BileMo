@@ -24,6 +24,10 @@ class Client implements TimestampInterface
     #[Assert\NotBlank(
         message: 'The firstname should not be blank',
     )]
+    #[Assert\Regex(
+        pattern: "/^[a-zA-Z\s\-]+$/",
+        message: 'The firstname can only contain letters, spaces, and hyphens',
+    )]
     #[Assert\Length(
         min: 1,
         max: 255,
@@ -36,6 +40,10 @@ class Client implements TimestampInterface
     #[ORM\Column(length: 255)]
     #[Assert\NotBlank(
         message: 'The lastname should not be blank',
+    )]
+    #[Assert\Regex(
+        pattern: "/^[a-zA-Z\s\-]+$/",
+        message: 'The lastname can only contain letters, spaces, and hyphens',
     )]
     #[Assert\Length(
         min: 1,
@@ -59,6 +67,10 @@ class Client implements TimestampInterface
     #[ORM\Column(length: 12)]
     #[Assert\NotBlank(
         message: 'The phone should not be blank',
+    )]
+    #[Assert\Regex(
+        pattern: "/^\+[1-9]\d{1,14}$/",
+        message: 'The phone number should be in E.164 format',
     )]
     #[Groups(['getClientDetails'])]
     private ?string $phone = null;
